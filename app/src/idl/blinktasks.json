@@ -21,7 +21,8 @@
       ],
       "accounts": [
         {
-          "name": "task"
+          "name": "task",
+          "writable": true
         },
         {
           "name": "worker",
@@ -50,7 +51,32 @@
         },
         {
           "name": "worker",
+          "writable": true,
           "signer": true
+        },
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "worker"
+              }
+            ]
+          }
         }
       ],
       "args": []
@@ -71,7 +97,45 @@
         {
           "name": "task",
           "writable": true,
-          "signer": true
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  115,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
         },
         {
           "name": "creator",
@@ -89,6 +153,55 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "init_profile",
+      "discriminator": [
+        210,
+        162,
+        212,
+        95,
+        95,
+        186,
+        89,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "release_payment",
@@ -115,6 +228,32 @@
         {
           "name": "worker",
           "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -133,6 +272,32 @@
         55,
         84
       ]
+    },
+    {
+      "name": "UserProfile",
+      "discriminator": [
+        32,
+        37,
+        119,
+        205,
+        179,
+        180,
+        13,
+        194
+      ]
+    },
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
     }
   ],
   "errors": [
@@ -150,6 +315,11 @@
       "code": 6002,
       "name": "NotCompleted",
       "msg": "Task not completed"
+    },
+    {
+      "code": 6003,
+      "name": "AlreadyPaid",
+      "msg": "Task already paid"
     }
   ],
   "types": [
@@ -177,8 +347,43 @@
           {
             "name": "is_paid",
             "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
           }
         ]
+      }
+    },
+    {
+      "name": "UserProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "tasks_completed",
+            "type": "u64"
+          },
+          {
+            "name": "reputation",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": []
       }
     }
   ]
