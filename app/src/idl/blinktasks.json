@@ -33,16 +33,19 @@
       "args": []
     },
     {
-      "name": "complete_task",
+      "name": "approve_and_pay",
+      "docs": [
+        "Cliente aprueba la entrega y libera el pago al worker"
+      ],
       "discriminator": [
-        109,
-        167,
-        192,
-        41,
-        129,
-        108,
-        220,
-        196
+        17,
+        171,
+        252,
+        175,
+        75,
+        86,
+        76,
+        96
       ],
       "accounts": [
         {
@@ -50,12 +53,16 @@
           "writable": true
         },
         {
-          "name": "worker",
+          "name": "creator",
           "writable": true,
           "signer": true
         },
         {
-          "name": "profile",
+          "name": "worker",
+          "writable": true
+        },
+        {
+          "name": "worker_profile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -77,6 +84,88 @@
               }
             ]
           }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.creator",
+                "account": "Task"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_task",
+      "docs": [
+        "Cliente cancela y recupera el SOL (solo si aún no tiene worker asignado)"
+      ],
+      "discriminator": [
+        69,
+        228,
+        134,
+        187,
+        134,
+        105,
+        238,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.creator",
+                "account": "Task"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -106,6 +195,35 @@
                   97,
                   115,
                   107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "profile.tasks_created",
+                "account": "UserProfile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
                 ]
               },
               {
@@ -151,6 +269,22 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "category",
+          "type": "string"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
         }
       ]
     },
@@ -201,34 +335,38 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "username",
+          "type": "string"
+        },
+        {
+          "name": "bio",
+          "type": "string"
+        },
+        {
+          "name": "skills",
+          "type": "string"
+        },
+        {
+          "name": "contact",
+          "type": "string"
+        }
+      ]
     },
     {
-      "name": "release_payment",
+      "name": "init_vault",
       "discriminator": [
-        24,
-        34,
-        191,
-        86,
-        145,
-        160,
-        183,
-        233
+        77,
+        79,
+        85,
+        150,
+        33,
+        217,
+        52,
+        106
       ],
       "accounts": [
-        {
-          "name": "task",
-          "writable": true
-        },
-        {
-          "name": "creator",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "worker",
-          "writable": true
-        },
         {
           "name": "vault",
           "writable": true,
@@ -246,10 +384,15 @@
               },
               {
                 "kind": "account",
-                "path": "creator"
+                "path": "user"
               }
             ]
           }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "system_program",
@@ -257,6 +400,134 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "report_error",
+      "docs": [
+        "Cliente reporta un error — el worker puede resubmitir"
+      ],
+      "discriminator": [
+        88,
+        133,
+        96,
+        124,
+        196,
+        105,
+        77,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "note",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "submit_delivery",
+      "docs": [
+        "Worker sube URL de entrega (link, IPFS, Google Drive, etc.)"
+      ],
+      "discriminator": [
+        217,
+        177,
+        33,
+        54,
+        136,
+        185,
+        123,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true
+        },
+        {
+          "name": "worker",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "delivery_url",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "update_profile",
+      "discriminator": [
+        98,
+        67,
+        99,
+        206,
+        86,
+        115,
+        175,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "username",
+          "type": "string"
+        },
+        {
+          "name": "bio",
+          "type": "string"
+        },
+        {
+          "name": "skills",
+          "type": "string"
+        },
+        {
+          "name": "contact",
+          "type": "string"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -285,41 +556,28 @@
         13,
         194
       ]
-    },
-    {
-      "name": "Vault",
-      "discriminator": [
-        211,
-        8,
-        232,
-        43,
-        2,
-        152,
-        117,
-        119
-      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
-      "name": "AlreadyTaken",
-      "msg": "Task already taken"
-    },
-    {
-      "code": 6001,
       "name": "Unauthorized",
       "msg": "Not authorized"
     },
     {
+      "code": 6001,
+      "name": "InvalidStatus",
+      "msg": "Invalid task status for this action"
+    },
+    {
       "code": 6002,
-      "name": "NotCompleted",
-      "msg": "Task not completed"
+      "name": "StringTooLong",
+      "msg": "String exceeds maximum allowed length"
     },
     {
       "code": 6003,
-      "name": "AlreadyPaid",
-      "msg": "Task already paid"
+      "name": "InvalidAmount",
+      "msg": "Amount must be greater than zero"
     }
   ],
   "types": [
@@ -341,12 +599,36 @@
             "type": "u64"
           },
           {
-            "name": "is_completed",
-            "type": "bool"
+            "name": "title",
+            "type": "string"
           },
           {
-            "name": "is_paid",
-            "type": "bool"
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "type": "string"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "delivery_url",
+            "type": "string"
+          },
+          {
+            "name": "error_note",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "TaskStatus"
+              }
+            }
           },
           {
             "name": "bump",
@@ -355,6 +637,36 @@
           {
             "name": "vault_bump",
             "type": "u8"
+          },
+          {
+            "name": "task_id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TaskStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "InProgress"
+          },
+          {
+            "name": "Submitted"
+          },
+          {
+            "name": "Disputed"
+          },
+          {
+            "name": "Paid"
+          },
+          {
+            "name": "Cancelled"
           }
         ]
       }
@@ -369,6 +681,26 @@
             "type": "pubkey"
           },
           {
+            "name": "username",
+            "type": "string"
+          },
+          {
+            "name": "bio",
+            "type": "string"
+          },
+          {
+            "name": "skills",
+            "type": "string"
+          },
+          {
+            "name": "contact",
+            "type": "string"
+          },
+          {
+            "name": "tasks_created",
+            "type": "u64"
+          },
+          {
             "name": "tasks_completed",
             "type": "u64"
           },
@@ -377,13 +709,6 @@
             "type": "u64"
           }
         ]
-      }
-    },
-    {
-      "name": "Vault",
-      "type": {
-        "kind": "struct",
-        "fields": []
       }
     }
   ]
