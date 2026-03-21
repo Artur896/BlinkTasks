@@ -16,21 +16,25 @@ export default function App() {
         alert("Conecta tu wallet primero");
         return;
       }
+      console.log("Wallet frontend:", wallet.publicKey.toString());
 
       setLoading(true);
 
       const program = getProgram(wallet);
 
-      const taskAccount = Keypair.generate();
+      // ✅ PDA
+      const [taskPda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("task"), wallet.publicKey.toBuffer()],
+        program.programId
+      );
 
       await program.methods
         .createTask(new anchor.BN(1000000))
         .accounts({
-          task: taskAccount.publicKey,
+          task: taskPda,
           creator: wallet.publicKey,
           systemProgram: SystemProgram.programId,
         })
-        .signers([taskAccount])
         .rpc();
 
       alert("✅ Tarea creada en blockchain");
@@ -52,13 +56,7 @@ export default function App() {
           task: taskPubkey,
           worker: wallet.publicKey,
         })
-        .remainingAccounts([
-          {
-            pubkey: taskPubkey,
-            isWritable: true,
-            isSigner: false,
-          },
-        ])
+        
         .rpc();
 
       alert("Tarea aceptada");
@@ -69,14 +67,50 @@ export default function App() {
     }
   };
 
+  const initProfile = async () => {
+    try {
+      if (!wallet.publicKey) {
+        alert("Conecta tu wallet primero");
+        return;
+      }
+
+      const program = getProgram(wallet);
+
+      const [profilePda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("profile"), wallet.publicKey.toBuffer()],
+        program.programId
+      );
+
+      await program.methods
+        .initProfile()
+        .accounts({
+          profile: profilePda,
+          user: wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      alert("Perfil creado 🚀");
+    } catch (err) {
+      console.error(err);
+      alert("Error creando perfil");
+    }
+  };
+
   const completeTask = async (taskPubkey) => {
     const program = getProgram(wallet);
+
+    const [profilePda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("profile"), wallet.publicKey.toBuffer()],
+      program.programId
+    );
 
     await program.methods
       .completeTask()
       .accounts({
         task: taskPubkey,
         worker: wallet.publicKey,
+        profile: profilePda,
       })
       .rpc();
 
@@ -84,18 +118,35 @@ export default function App() {
   };
 
   const payTask = async (taskPubkey, creator, worker) => {
-    const program = getProgram(wallet);
+    try {
+      const program = getProgram(wallet);
 
-    await program.methods
-      .releasePayment()
-      .accounts({
-        task: taskPubkey,
-        creator: wallet.publicKey,
-        worker: worker,
-      })
-      .rpc();
+      const workerPubkey = new anchor.web3.PublicKey(worker);
+      const creatorPubkey = new anchor.web3.PublicKey(creator);
 
-    getTasks();
+      const [vaultPda] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("vault"), creatorPubkey.toBuffer()],
+        program.programId
+      );
+
+      await program.methods
+        .releasePayment()
+        .accounts({
+          task: taskPubkey,
+          creator: wallet.publicKey,
+          worker: workerPubkey,
+          vault: vaultPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      alert("✅ Pago realizado");
+      getTasks();
+
+    } catch (err) {
+      console.error("ERROR PAY:", err);
+      alert("Error al pagar");
+    }
   };
 
   const getTasks = async () => {
@@ -121,12 +172,22 @@ export default function App() {
       <button onClick={createTask} disabled={!wallet.connected || loading}>
         {loading ? "Creando..." : "Crear tarea"}
       </button>
+      <button onClick={initProfile} disabled={!wallet.connected}>
+        Crear perfil
+      </button>
       <button onClick={getTasks}>
         Ver tareas
       </button>
       <div style={{ marginTop: 30 }}>
         {tasks.map((t) => {
           const data = t.account;
+
+            console.log("----- TASK -----");
+            console.log("Task Pubkey:", t.publicKey.toString());
+            console.log("Creator:", data.creator.toString());
+            console.log("Worker:", data.worker.toString());
+            console.log("Completed:", data.isCompleted);
+            console.log("Paid:", data.isPaid);
 
           const isAvailable =
             data.worker.toString() === anchor.web3.PublicKey.default.toString();
