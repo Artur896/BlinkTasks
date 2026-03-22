@@ -52,8 +52,8 @@ pub mod blinktasks {
         p.tasks_completed   = 0;
         p.tasks_created     = 0;
         p.reputation        = 0;
-        p.total_rating      = 0;   // ✅ nuevo
-        p.rating_count      = 0;   // ✅ nuevo
+        p.total_rating      = 0;
+        p.rating_count      = 0;
         Ok(())
     }
 
@@ -152,7 +152,6 @@ pub mod blinktasks {
         Ok(())
     }
 
-    /// Aprueba la entrega, libera pago y registra rating (1-5)
     pub fn approve_and_pay(ctx: Context<ApproveAndPay>, rating: u8) -> Result<()> {
         require!(rating >= 1 && rating <= 5, CustomError::InvalidRating); // ✅ nuevo
 
@@ -179,7 +178,6 @@ pub mod blinktasks {
 
         task.status = TaskStatus::Paid;
 
-        // Actualizar perfil del worker con rating ✅
         let wp = &mut ctx.accounts.worker_profile;
         wp.tasks_completed += 1;
         wp.reputation      += 10;
@@ -226,48 +224,43 @@ pub mod blinktasks {
     }
 }
 
-// ── ACCOUNT STRUCTS ───────────────────────────────────────────
 
 #[account]
 pub struct UserProfile {
-    pub authority:       Pubkey,   // 32
-    pub username:        String,   // 4+50
-    pub bio:             String,   // 4+200
-    pub skills:          String,   // 4+100
-    pub contact:         String,   // 4+100
-    pub tasks_created:   u64,      // 8
-    pub tasks_completed: u64,      // 8
-    pub reputation:      u64,      // 8
-    pub total_rating:    u64,      // 8  ✅ suma de todos los ratings recibidos
-    pub rating_count:    u64,      // 8  ✅ cuántos ratings recibió
+    pub authority:       Pubkey,
+    pub username:        String,
+    pub bio:             String,
+    pub skills:          String,
+    pub contact:         String,
+    pub tasks_created:   u64,
+    pub tasks_completed: u64,
+    pub reputation:      u64,
+    pub total_rating:    u64,
+    pub rating_count:    u64, 
 }
-// space = 8 + 32 + 54 + 204 + 104 + 104 + 8+8+8+8+8 = 546
 const PROFILE_SPACE: usize = 8 + 32 + 54 + 204 + 104 + 104 + 8 + 8 + 8 + 8 + 8;
 
 #[account]
 pub struct Task {
-    pub creator:      Pubkey,     // 32
-    pub worker:       Pubkey,     // 32
-    pub amount:       u64,        // 8
-    pub title:        String,     // 4+100
-    pub description:  String,     // 4+500
-    pub category:     String,     // 4+50
-    pub deadline:     i64,        // 8
-    pub delivery_url: String,     // 4+200
-    pub error_note:   String,     // 4+200
-    pub status:       TaskStatus, // 2
-    pub bump:         u8,         // 1
-    pub vault_bump:   u8,         // 1
-    pub task_id:      u64,        // 8
+    pub creator:      Pubkey,
+    pub worker:       Pubkey,
+    pub amount:       u64,
+    pub title:        String,
+    pub description:  String,
+    pub category:     String,
+    pub deadline:     i64, 
+    pub delivery_url: String,
+    pub error_note:   String,
+    pub status:       TaskStatus,
+    pub bump:         u8,
+    pub vault_bump:   u8,
+    pub task_id:      u64,
 }
-// space = 8 + 32+32+8 + 104+504+54+8+204+204 + 2+1+1+8 = 1174
 const TASK_SPACE: usize = 8 + 32 + 32 + 8 + 104 + 504 + 54 + 8 + 204 + 204 + 2 + 1 + 1 + 8;
 
-// ── CONTEXT STRUCTS ───────────────────────────────────────────
 
 #[derive(Accounts)]
 pub struct InitVault<'info> {
-    /// CHECK: PDA vault validada con seeds
     #[account(mut, seeds = [b"vault", user.key().as_ref()], bump)]
     pub vault: UncheckedAccount<'info>,
     #[account(mut)]
@@ -307,7 +300,6 @@ pub struct CreateTask<'info> {
     pub task: Account<'info, Task>,
     #[account(mut, seeds = [b"profile", creator.key().as_ref()], bump)]
     pub profile: Account<'info, UserProfile>,
-    /// CHECK: PDA vault validada con seeds
     #[account(mut, seeds = [b"vault", creator.key().as_ref()], bump)]
     pub vault: UncheckedAccount<'info>,
     #[account(mut)]
@@ -341,7 +333,6 @@ pub struct ApproveAndPay<'info> {
     pub worker: SystemAccount<'info>,
     #[account(mut, seeds = [b"profile", worker.key().as_ref()], bump)]
     pub worker_profile: Account<'info, UserProfile>,
-    /// CHECK: PDA vault validada con seeds y bump guardado en task
     #[account(mut, seeds = [b"vault", task.creator.as_ref()], bump = task.vault_bump)]
     pub vault: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
@@ -361,13 +352,10 @@ pub struct CancelTask<'info> {
     pub task: Account<'info, Task>,
     #[account(mut)]
     pub creator: Signer<'info>,
-    /// CHECK: PDA vault validada con seeds y bump guardado en task
     #[account(mut, seeds = [b"vault", task.creator.as_ref()], bump = task.vault_bump)]
     pub vault: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
-
-// ── ERRORS ────────────────────────────────────────────────────
 
 #[error_code]
 pub enum CustomError {
