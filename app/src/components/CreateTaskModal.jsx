@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useBreakpoint } from "../hooks/useBreakpoint.js";
 
 const CATEGORIES = ["Diseño", "Código", "Redacción", "Marketing", "Video", "Audio", "3D", "Otro"];
 
 export function CreateTaskModal({ onClose, onCreate, creating }) {
+  const { isMobile } = useBreakpoint();
   const [form, setForm] = useState({ title: "", description: "", category: "", sol: "0.01", deadline: "" });
   const [error, setError] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -15,17 +17,9 @@ export function CreateTaskModal({ onClose, onCreate, creating }) {
     if (isNaN(amount) || amount <= 0) return setError("Monto inválido");
     if (form.title.length > 100)       return setError("Título máx 100 chars");
     if (form.description.length > 500) return setError("Descripción máx 500 chars");
-
     const deadlineTs = form.deadline ? Math.floor(new Date(form.deadline).getTime() / 1000) : 0;
-
     try {
-      await onCreate({
-        amount:      Math.round(amount * 1e9),
-        title:       form.title,
-        description: form.description,
-        category:    form.category,
-        deadline:    deadlineTs,
-      });
+      await onCreate({ amount: Math.round(amount * 1e9), title: form.title, description: form.description, category: form.category, deadline: deadlineTs });
       onClose();
     } catch (e) {
       setError(e.message || "Error al crear tarea");
@@ -33,12 +27,14 @@ export function CreateTaskModal({ onClose, onCreate, creating }) {
   };
 
   return (
-    <div style={s.overlay} onClick={onClose}>
-      <div style={s.modal} onClick={e => e.stopPropagation()}>
+    <div style={s.overlay} className="modal-overlay" onClick={onClose}>
+      <div style={s.modal(isMobile)} className="modal-sheet" onClick={e => e.stopPropagation()}>
+
+        {isMobile && <div style={s.handle} />}
 
         <div style={s.header}>
           <span style={s.title}>Nueva tarea</span>
-          <button onClick={onClose} style={s.closeBtn}>✕</button>
+          {!isMobile && <button onClick={onClose} style={s.closeBtn}>✕</button>}
         </div>
 
         <div style={s.body}>
@@ -49,10 +45,10 @@ export function CreateTaskModal({ onClose, onCreate, creating }) {
           </Field>
 
           <Field label="Descripción *" hint={`${form.description.length}/500`}>
-            <textarea style={{ ...s.input, height: 100, resize: "vertical" }}
+            <textarea style={{ ...s.input, height: 90, resize: "vertical" }}
               value={form.description} maxLength={500}
               onChange={e => set("description", e.target.value)}
-              placeholder="Explica con detalle qué necesitas: entregables, formato, referencias, estilo..." />
+              placeholder="Explica qué necesitas: entregables, formato, referencias..." />
           </Field>
 
           <Field label="Categoría *">
@@ -66,13 +62,15 @@ export function CreateTaskModal({ onClose, onCreate, creating }) {
             </div>
           </Field>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Pago + Deadline — apilados en mobile, lado a lado en desktop */}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
             <Field label="Pago en SOL *">
               <div style={s.inputRow}>
                 <input type="number" min="0.000001" step="0.001"
-                  style={{ ...s.input, flex: 1 }} value={form.sol}
+                  style={{ ...s.input, flex: 1, borderRadius: "8px 0 0 8px", borderRight: "none" }}
+                  value={form.sol}
                   onChange={e => set("sol", e.target.value)} />
-                <span style={{ color: "#6b6b8a", fontSize: 12, paddingRight: 10 }}>SOL</span>
+                <span style={s.unit}>SOL</span>
               </div>
               <span style={{ fontSize: 10, color: "#3a3a55", marginTop: 4 }}>
                 ≈ {Math.round(parseFloat(form.sol || 0) * 1e9).toLocaleString()} lamps
@@ -91,8 +89,9 @@ export function CreateTaskModal({ onClose, onCreate, creating }) {
         </div>
 
         <div style={s.footer}>
-          <button onClick={onClose} style={s.cancelBtn}>Cancelar</button>
-          <button onClick={handleSubmit} disabled={creating} style={s.confirmBtn}>
+          {!isMobile && <button onClick={onClose} style={s.cancelBtn}>Cancelar</button>}
+          <button onClick={handleSubmit} disabled={creating}
+            style={{ ...s.confirmBtn, flex: isMobile ? "1" : "2" }}>
             {creating ? "Creando..." : "Crear y bloquear SOL"}
           </button>
         </div>
@@ -114,19 +113,21 @@ function Field({ label, hint, children }) {
 }
 
 const s = {
-  overlay:    { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
-  modal:      { background: "#13131a", border: "1px solid #2a2a3d", borderRadius: 16, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto", fontFamily: "'DM Mono', monospace" },
+  overlay:    { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
+  modal:      (isMobile) => ({ background: "#13131a", border: "1px solid #2a2a3d", borderRadius: isMobile ? "20px 20px 0 0" : 16, width: "100%", maxWidth: isMobile ? "100%" : 520, maxHeight: isMobile ? "92vh" : "90vh", overflowY: "auto", fontFamily: "'DM Mono', monospace" }),
+  handle:     { width: 40, height: 4, borderRadius: 2, background: "#2a2a3d", margin: "12px auto 0" },
   header:     { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #2a2a3d", position: "sticky", top: 0, background: "#13131a" },
   title:      { fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 18, color: "#f0f0fa" },
   closeBtn:   { background: "none", color: "#6b6b8a", fontSize: 16, padding: "4px 8px", borderRadius: 6 },
   body:       { padding: "20px 24px", display: "flex", flexDirection: "column", gap: 18 },
-  input:      { width: "100%", background: "#0a0a0f", border: "1px solid #2a2a3d", borderRadius: 8, padding: "10px 12px", color: "#f0f0fa", fontSize: 13, fontFamily: "'DM Mono', monospace", outline: "none", boxSizing: "border-box" },
-  inputRow:   { display: "flex", alignItems: "center", background: "#0a0a0f", border: "1px solid #2a2a3d", borderRadius: 8 },
+  input:      { width: "100%", background: "#0a0a0f", border: "1px solid #2a2a3d", borderRadius: 8, padding: "10px 12px", color: "#f0f0fa", fontSize: 14, fontFamily: "'DM Mono', monospace", outline: "none", boxSizing: "border-box" },
+  inputRow:   { display: "flex", alignItems: "stretch", background: "#0a0a0f", border: "1px solid #2a2a3d", borderRadius: 8 },
+  unit:       { padding: "0 12px", display: "flex", alignItems: "center", color: "#6b6b8a", fontSize: 12, background: "#1c1c27", borderRadius: "0 8px 8px 0", borderLeft: "1px solid #2a2a3d" },
   chipRow:    { display: "flex", flexWrap: "wrap", gap: 6 },
-  chip:       { padding: "4px 12px", borderRadius: 999, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 12, cursor: "pointer" },
-  chipActive: { padding: "4px 12px", borderRadius: 999, background: "#7c6dff22", color: "#a78bfa", border: "1px solid #7c6dff55", fontSize: 12, cursor: "pointer" },
+  chip:       { padding: "6px 14px", borderRadius: 999, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 12, cursor: "pointer", minHeight: 36 },
+  chipActive: { padding: "6px 14px", borderRadius: 999, background: "#7c6dff22", color: "#a78bfa", border: "1px solid #7c6dff55", fontSize: 12, cursor: "pointer", minHeight: 36 },
   error:      { color: "#ff5f6d", fontSize: 12 },
   footer:     { display: "flex", gap: 10, padding: "16px 24px", borderTop: "1px solid #2a2a3d", position: "sticky", bottom: 0, background: "#13131a" },
   cancelBtn:  { flex: 1, padding: "10px", borderRadius: 10, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 13 },
-  confirmBtn: { flex: 2, padding: "10px", borderRadius: 10, background: "linear-gradient(135deg, #7c6dff, #a78bfa)", color: "#fff", fontWeight: 600, fontSize: 13, fontFamily: "'Syne', sans-serif" },
+  confirmBtn: { padding: "12px 10px", borderRadius: 10, background: "linear-gradient(135deg, #7c6dff, #a78bfa)", color: "#fff", fontWeight: 600, fontSize: 14, fontFamily: "'Syne', sans-serif" },
 };

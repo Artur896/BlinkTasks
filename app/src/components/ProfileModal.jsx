@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useBreakpoint } from "../hooks/useBreakpoint.js";
 
 const SKILLS_OPTIONS = ["Diseño", "Código", "Redacción", "Marketing", "Video", "Audio", "3D", "Otro"];
 
 export function ProfileModal({ existing, onClose, onSave, loading }) {
+  const { isMobile } = useBreakpoint();
   const [form, setForm] = useState({
     username: existing?.username || "",
     bio:      existing?.bio      || "",
@@ -10,7 +12,6 @@ export function ProfileModal({ existing, onClose, onSave, loading }) {
     contact:  existing?.contact  || "",
   });
   const [error, setError] = useState("");
-
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async () => {
@@ -28,18 +29,23 @@ export function ProfileModal({ existing, onClose, onSave, loading }) {
   };
 
   return (
-    <div style={s.overlay} onClick={onClose}>
-      <div style={s.modal} onClick={e => e.stopPropagation()}>
+    <div style={s.overlay} className="modal-overlay" onClick={onClose}>
+      <div style={s.modal(isMobile)} className="modal-sheet" onClick={e => e.stopPropagation()}>
+
+        {/* Drag handle — mobile */}
+        {isMobile && <div style={s.handle} />}
 
         <div style={s.header}>
           <span style={s.title}>{existing ? "Editar perfil" : "Crear perfil"}</span>
-          <button onClick={onClose} style={s.closeBtn}>✕</button>
+          {!isMobile && <button onClick={onClose} style={s.closeBtn}>✕</button>}
         </div>
 
         <div style={s.body}>
           <Field label="Username *" hint="máx 50 chars">
             <input style={s.input} value={form.username} maxLength={50}
-              onChange={e => set("username", e.target.value)} placeholder="satoshi_dev" />
+              onChange={e => set("username", e.target.value)}
+              placeholder="satoshi_dev"
+              autoComplete="off" autoCapitalize="none" />
           </Field>
 
           <Field label="Bio" hint={`${form.bio.length}/200`}>
@@ -49,7 +55,7 @@ export function ProfileModal({ existing, onClose, onSave, loading }) {
               placeholder="Cuéntale a los clientes quién eres..." />
           </Field>
 
-          <Field label="Skills" hint="máx 100 chars — separadas por comas">
+          <Field label="Skills" hint="máx 100 chars">
             <div style={s.chipRow}>
               {SKILLS_OPTIONS.map(skill => {
                 const active = form.skills.toLowerCase().includes(skill.toLowerCase());
@@ -73,15 +79,19 @@ export function ProfileModal({ existing, onClose, onSave, loading }) {
           <Field label="Contacto" hint="email, Telegram, Discord, etc.">
             <input style={s.input} value={form.contact} maxLength={100}
               onChange={e => set("contact", e.target.value)}
-              placeholder="@tu_usuario / tu@email.com" />
+              placeholder="@tu_usuario / tu@email.com"
+              autoComplete="off" />
           </Field>
 
           {error && <p style={s.error}>{error}</p>}
         </div>
 
         <div style={s.footer}>
-          <button onClick={onClose} style={s.cancelBtn}>Cancelar</button>
-          <button onClick={handleSubmit} disabled={loading} style={s.confirmBtn}>
+          {!isMobile && (
+            <button onClick={onClose} style={s.cancelBtn}>Cancelar</button>
+          )}
+          <button onClick={handleSubmit} disabled={loading}
+            style={{ ...s.confirmBtn, flex: isMobile ? "1" : "2" }}>
             {loading ? "Guardando..." : existing ? "Actualizar perfil" : "Crear perfil + vault"}
           </button>
         </div>
@@ -103,18 +113,28 @@ function Field({ label, hint, children }) {
 }
 
 const s = {
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
-  modal:   { background: "#13131a", border: "1px solid #2a2a3d", borderRadius: 16, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", fontFamily: "'DM Mono', monospace" },
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
+  modal:   (isMobile) => ({
+    background: "#13131a",
+    border: "1px solid #2a2a3d",
+    borderRadius: isMobile ? "20px 20px 0 0" : 16,
+    width: "100%",
+    maxWidth: isMobile ? "100%" : 480,
+    maxHeight: isMobile ? "92vh" : "90vh",
+    overflowY: "auto",
+    fontFamily: "'DM Mono', monospace",
+  }),
+  handle:  { width: 40, height: 4, borderRadius: 2, background: "#2a2a3d", margin: "12px auto 0" },
   header:  { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #2a2a3d", position: "sticky", top: 0, background: "#13131a", zIndex: 1 },
   title:   { fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 18, color: "#f0f0fa" },
   closeBtn:{ background: "none", color: "#6b6b8a", fontSize: 16, padding: "4px 8px", borderRadius: 6 },
   body:    { padding: "20px 24px", display: "flex", flexDirection: "column", gap: 18 },
-  input:   { width: "100%", background: "#0a0a0f", border: "1px solid #2a2a3d", borderRadius: 8, padding: "10px 12px", color: "#f0f0fa", fontSize: 13, fontFamily: "'DM Mono', monospace", outline: "none" },
+  input:   { width: "100%", background: "#0a0a0f", border: "1px solid #2a2a3d", borderRadius: 8, padding: "10px 12px", color: "#f0f0fa", fontSize: 14, fontFamily: "'DM Mono', monospace", outline: "none" },
   chipRow: { display: "flex", flexWrap: "wrap", gap: 6 },
-  chip:    { padding: "4px 12px", borderRadius: 999, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 12, cursor: "pointer" },
-  chipActive: { padding: "4px 12px", borderRadius: 999, background: "#7c6dff22", color: "#a78bfa", border: "1px solid #7c6dff55", fontSize: 12, cursor: "pointer" },
+  chip:       { padding: "6px 14px", borderRadius: 999, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 12, cursor: "pointer", minHeight: 36 },
+  chipActive: { padding: "6px 14px", borderRadius: 999, background: "#7c6dff22", color: "#a78bfa", border: "1px solid #7c6dff55", fontSize: 12, cursor: "pointer", minHeight: 36 },
   error:   { color: "#ff5f6d", fontSize: 12 },
   footer:  { display: "flex", gap: 10, padding: "16px 24px", borderTop: "1px solid #2a2a3d", position: "sticky", bottom: 0, background: "#13131a" },
   cancelBtn:  { flex: 1, padding: "10px", borderRadius: 10, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 13 },
-  confirmBtn: { flex: 2, padding: "10px", borderRadius: 10, background: "linear-gradient(135deg, #7c6dff, #a78bfa)", color: "#fff", fontWeight: 600, fontSize: 13, fontFamily: "'Syne', sans-serif" },
+  confirmBtn: { padding: "12px 10px", borderRadius: 10, background: "linear-gradient(135deg, #7c6dff, #a78bfa)", color: "#fff", fontWeight: 600, fontSize: 14, fontFamily: "'Syne', sans-serif" },
 };
