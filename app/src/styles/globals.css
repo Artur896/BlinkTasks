@@ -23,9 +23,26 @@
   --radius:    12px;
   --radius-sm: 8px;
   --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Spacing scale */
+  --space-xs:  8px;
+  --space-sm:  12px;
+  --space-md:  20px;
+  --space-lg:  32px;
+  --space-xl:  48px;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
 
 body {
   background: var(--bg);
@@ -35,17 +52,7 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
-}
-
-/* Noise overlay */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 button {
@@ -53,6 +60,8 @@ button {
   cursor: pointer;
   border: none;
   transition: var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 button:disabled {
@@ -60,7 +69,101 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+input, textarea, select {
+  font-family: var(--font-mono);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Scrollbar — desktop only */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+}
+
+/* ── UTILITY CLASSES ─────────────────────────────────── */
+
+.fade {
+  animation: fadeUp 0.35s ease forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── RESPONSIVE MODAL HELPERS ────────────────────────── */
+
+/* Mobile: modales como bottom sheets */
+@media (max-width: 767px) {
+  .modal-sheet {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  .modal-overlay {
+    align-items: flex-end !important;
+  }
+}
+
+/* ── RESPONSIVE GRID ─────────────────────────────────── */
+
+.task-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .task-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .task-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+/* ── TOUCH TARGETS ───────────────────────────────────── */
+@media (max-width: 767px) {
+  button:not([disabled]) {
+    min-height: 44px; /* Apple HIG minimum touch target */
+  }
+
+  input, textarea, select {
+    min-height: 44px;
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* Date input fix */
+input[type=date]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+}
+
+select option {
+  background: #13131a;
+}
