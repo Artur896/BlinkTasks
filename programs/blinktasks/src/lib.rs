@@ -3,9 +3,6 @@ use anchor_lang::system_program;
 
 declare_id!("An6HpDp4ypTZB1mKEFzmvXyHSP1oBPf2KeG9J2MkP2my");
 
-// ============================================================
-// CONSTANTS — string max lengths (chars = bytes for ASCII/UTF-8 base)
-// ============================================================
 const MAX_USERNAME:    usize = 50;
 const MAX_BIO:         usize = 200;
 const MAX_SKILLS:      usize = 100;
@@ -16,35 +13,23 @@ const MAX_CATEGORY:    usize = 50;
 const MAX_DELIVERY:    usize = 200;
 const MAX_NOTE:        usize = 200;
 
-// ============================================================
-// ENUMS
-// ============================================================
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum TaskStatus {
-    Open,        // recién creada, sin worker
-    InProgress,  // worker asignado
-    Submitted,   // worker subió entrega
-    Disputed,    // cliente reportó error
-    Paid,        // cliente aprobó y pagó
-    Cancelled,   // cancelada con reembolso
+    Open,
+    InProgress,
+    Submitted,
+    Disputed,
+    Paid,
+    Cancelled,
 }
 
 impl Default for TaskStatus {
-    fn default() -> Self {
-        TaskStatus::Open
-    }
+    fn default() -> Self { TaskStatus::Open }
 }
-
-// ============================================================
-// PROGRAM
-// ============================================================
 
 #[program]
 pub mod blinktasks {
     use super::*;
-
-    // ── PROFILE ──────────────────────────────────────────────
 
     pub fn init_profile(
         ctx: Context<InitProfile>,
@@ -58,15 +43,17 @@ pub mod blinktasks {
         require!(skills.len()   <= MAX_SKILLS,      CustomError::StringTooLong);
         require!(contact.len()  <= MAX_CONTACT,     CustomError::StringTooLong);
 
-        let profile = &mut ctx.accounts.profile;
-        profile.authority      = *ctx.accounts.user.key;
-        profile.username       = username;
-        profile.bio            = bio;
-        profile.skills         = skills;
-        profile.contact        = contact;
-        profile.tasks_completed = 0;
-        profile.tasks_created  = 0;
-        profile.reputation     = 0;
+        let p = &mut ctx.accounts.profile;
+        p.authority         = *ctx.accounts.user.key;
+        p.username          = username;
+        p.bio               = bio;
+        p.skills            = skills;
+        p.contact           = contact;
+        p.tasks_completed   = 0;
+        p.tasks_created     = 0;
+        p.reputation        = 0;
+        p.total_rating      = 0;   // ✅ nuevo
+        p.rating_count      = 0;   // ✅ nuevo
         Ok(())
     }
 
@@ -82,22 +69,18 @@ pub mod blinktasks {
         require!(skills.len()   <= MAX_SKILLS,      CustomError::StringTooLong);
         require!(contact.len()  <= MAX_CONTACT,     CustomError::StringTooLong);
 
-        let profile = &mut ctx.accounts.profile;
-        profile.username = username;
-        profile.bio      = bio;
-        profile.skills   = skills;
-        profile.contact  = contact;
+        let p = &mut ctx.accounts.profile;
+        p.username = username;
+        p.bio      = bio;
+        p.skills   = skills;
+        p.contact  = contact;
         Ok(())
     }
-
-    // ── VAULT ────────────────────────────────────────────────
 
     pub fn init_vault(ctx: Context<InitVault>) -> Result<()> {
-        msg!("Vault initialized at: {}", ctx.accounts.vault.key());
+        msg!("Vault: {}", ctx.accounts.vault.key());
         Ok(())
     }
-
-    // ── TASK ─────────────────────────────────────────────────
 
     pub fn create_task(
         ctx: Context<CreateTask>,
@@ -105,7 +88,7 @@ pub mod blinktasks {
         title: String,
         description: String,
         category: String,
-        deadline: i64,        // Unix timestamp; 0 = sin deadline
+        deadline: i64,
     ) -> Result<()> {
         require!(title.len()       <= MAX_TITLE,       CustomError::StringTooLong);
         require!(description.len() <= MAX_DESCRIPTION, CustomError::StringTooLong);
@@ -131,7 +114,6 @@ pub mod blinktasks {
 
         profile.tasks_created += 1;
 
-        // Lock SOL in vault
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -142,47 +124,46 @@ pub mod blinktasks {
             ),
             amount,
         )?;
-
         Ok(())
     }
 
     pub fn accept_task(ctx: Context<AcceptTask>) -> Result<()> {
         let task = &mut ctx.accounts.task;
-
-        require!(task.status == TaskStatus::Open,              CustomError::InvalidStatus);
-        require!(task.creator != ctx.accounts.worker.key(),    CustomError::Unauthorized);
+        require!(task.status == TaskStatus::Open,           CustomError::InvalidStatus);
+        require!(task.creator != ctx.accounts.worker.key(), CustomError::Unauthorized);
 
         task.worker = *ctx.accounts.worker.key;
         task.status = TaskStatus::InProgress;
         Ok(())
     }
 
-    /// Worker sube URL de entrega (link, IPFS, Google Drive, etc.)
     pub fn submit_delivery(ctx: Context<SubmitDelivery>, delivery_url: String) -> Result<()> {
         require!(delivery_url.len() <= MAX_DELIVERY, CustomError::StringTooLong);
-
         let task = &mut ctx.accounts.task;
-        require!(task.status == TaskStatus::InProgress || task.status == TaskStatus::Disputed,
-                 CustomError::InvalidStatus);
+        require!(
+            task.status == TaskStatus::InProgress || task.status == TaskStatus::Disputed,
+            CustomError::InvalidStatus
+        );
         require!(task.worker == *ctx.accounts.worker.key, CustomError::Unauthorized);
 
         task.delivery_url = delivery_url;
         task.status       = TaskStatus::Submitted;
-        task.error_note   = String::new(); // limpia nota anterior si era resubmit
+        task.error_note   = String::new();
         Ok(())
     }
 
-    /// Cliente aprueba la entrega y libera el pago al worker
-    pub fn approve_and_pay(ctx: Context<ApproveAndPay>) -> Result<()> {
-        let task = &mut ctx.accounts.task;
+    /// Aprueba la entrega, libera pago y registra rating (1-5)
+    pub fn approve_and_pay(ctx: Context<ApproveAndPay>, rating: u8) -> Result<()> {
+        require!(rating >= 1 && rating <= 5, CustomError::InvalidRating); // ✅ nuevo
 
-        require!(task.status == TaskStatus::Submitted, CustomError::InvalidStatus);
+        let task = &mut ctx.accounts.task;
+        require!(task.status == TaskStatus::Submitted,      CustomError::InvalidStatus);
         require!(task.creator == *ctx.accounts.creator.key, CustomError::Unauthorized);
         require!(task.worker  == ctx.accounts.worker.key(), CustomError::Unauthorized);
 
-        let amount = task.amount;
-        let seeds  = &[b"vault", task.creator.as_ref(), &[task.vault_bump]];
-        let signer = &[&seeds[..]];
+        let amount     = task.amount;
+        let seeds      = &[b"vault", task.creator.as_ref(), &[task.vault_bump]];
+        let signer     = &[&seeds[..]];
 
         system_program::transfer(
             CpiContext::new_with_signer(
@@ -198,20 +179,20 @@ pub mod blinktasks {
 
         task.status = TaskStatus::Paid;
 
-        // Actualizar perfil del worker
-        let profile = &mut ctx.accounts.worker_profile;
-        profile.tasks_completed += 1;
-        profile.reputation      += 10;
+        // Actualizar perfil del worker con rating ✅
+        let wp = &mut ctx.accounts.worker_profile;
+        wp.tasks_completed += 1;
+        wp.reputation      += 10;
+        wp.total_rating    += rating as u64;
+        wp.rating_count    += 1;
 
         Ok(())
     }
 
-    /// Cliente reporta un error — el worker puede resubmitir
     pub fn report_error(ctx: Context<ReportError>, note: String) -> Result<()> {
         require!(note.len() <= MAX_NOTE, CustomError::StringTooLong);
-
         let task = &mut ctx.accounts.task;
-        require!(task.status == TaskStatus::Submitted, CustomError::InvalidStatus);
+        require!(task.status == TaskStatus::Submitted,      CustomError::InvalidStatus);
         require!(task.creator == *ctx.accounts.creator.key, CustomError::Unauthorized);
 
         task.error_note = note;
@@ -219,11 +200,9 @@ pub mod blinktasks {
         Ok(())
     }
 
-    /// Cliente cancela y recupera el SOL (solo si aún no tiene worker asignado)
     pub fn cancel_task(ctx: Context<CancelTask>) -> Result<()> {
         let task = &mut ctx.accounts.task;
-
-        require!(task.status == TaskStatus::Open, CustomError::InvalidStatus);
+        require!(task.status == TaskStatus::Open,           CustomError::InvalidStatus);
         require!(task.creator == *ctx.accounts.creator.key, CustomError::Unauthorized);
 
         let amount = task.amount;
@@ -247,75 +226,61 @@ pub mod blinktasks {
     }
 }
 
-// ============================================================
-// ACCOUNT STRUCTS
-// ============================================================
+// ── ACCOUNT STRUCTS ───────────────────────────────────────────
 
 #[account]
 pub struct UserProfile {
-    pub authority:        Pubkey,   // 32
-    pub username:         String,   // 4 + 50
-    pub bio:              String,   // 4 + 200
-    pub skills:           String,   // 4 + 100
-    pub contact:          String,   // 4 + 100
-    pub tasks_created:    u64,      // 8
-    pub tasks_completed:  u64,      // 8
-    pub reputation:       u64,      // 8
+    pub authority:       Pubkey,   // 32
+    pub username:        String,   // 4+50
+    pub bio:             String,   // 4+200
+    pub skills:          String,   // 4+100
+    pub contact:         String,   // 4+100
+    pub tasks_created:   u64,      // 8
+    pub tasks_completed: u64,      // 8
+    pub reputation:      u64,      // 8
+    pub total_rating:    u64,      // 8  ✅ suma de todos los ratings recibidos
+    pub rating_count:    u64,      // 8  ✅ cuántos ratings recibió
 }
-
-// space = 8 + 32 + (4+50) + (4+200) + (4+100) + (4+100) + 8 + 8 + 8 = 530
-const PROFILE_SPACE: usize = 8 + 32 + 54 + 204 + 104 + 104 + 8 + 8 + 8;
+// space = 8 + 32 + 54 + 204 + 104 + 104 + 8+8+8+8+8 = 546
+const PROFILE_SPACE: usize = 8 + 32 + 54 + 204 + 104 + 104 + 8 + 8 + 8 + 8 + 8;
 
 #[account]
 pub struct Task {
-    pub creator:      Pubkey,      // 32
-    pub worker:       Pubkey,      // 32
-    pub amount:       u64,         // 8
-    pub title:        String,      // 4 + 100
-    pub description:  String,      // 4 + 500
-    pub category:     String,      // 4 + 50
-    pub deadline:     i64,         // 8
-    pub delivery_url: String,      // 4 + 200
-    pub error_note:   String,      // 4 + 200
-    pub status:       TaskStatus,  // 1 + 1 (discriminant)
-    pub bump:         u8,          // 1
-    pub vault_bump:   u8,          // 1
-    pub task_id:      u64,         // 8
+    pub creator:      Pubkey,     // 32
+    pub worker:       Pubkey,     // 32
+    pub amount:       u64,        // 8
+    pub title:        String,     // 4+100
+    pub description:  String,     // 4+500
+    pub category:     String,     // 4+50
+    pub deadline:     i64,        // 8
+    pub delivery_url: String,     // 4+200
+    pub error_note:   String,     // 4+200
+    pub status:       TaskStatus, // 2
+    pub bump:         u8,         // 1
+    pub vault_bump:   u8,         // 1
+    pub task_id:      u64,        // 8
 }
-
-// space = 8 + 32+32+8 + (4+100)+(4+500)+(4+50)+8+(4+200)+(4+200) + 2+1+1+8 = 1174
+// space = 8 + 32+32+8 + 104+504+54+8+204+204 + 2+1+1+8 = 1174
 const TASK_SPACE: usize = 8 + 32 + 32 + 8 + 104 + 504 + 54 + 8 + 204 + 204 + 2 + 1 + 1 + 8;
 
-// ============================================================
-// CONTEXT STRUCTS
-// ============================================================
+// ── CONTEXT STRUCTS ───────────────────────────────────────────
 
 #[derive(Accounts)]
 pub struct InitVault<'info> {
     /// CHECK: PDA vault validada con seeds
     #[account(mut, seeds = [b"vault", user.key().as_ref()], bump)]
     pub vault: UncheckedAccount<'info>,
-
     #[account(mut)]
     pub user: Signer<'info>,
-
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct InitProfile<'info> {
-    #[account(
-        init,
-        payer = user,
-        space = PROFILE_SPACE,
-        seeds = [b"profile", user.key().as_ref()],
-        bump
-    )]
+    #[account(init, payer = user, space = PROFILE_SPACE, seeds = [b"profile", user.key().as_ref()], bump)]
     pub profile: Account<'info, UserProfile>,
-
     #[account(mut)]
     pub user: Signer<'info>,
-
     pub system_program: Program<'info, System>,
 }
 
@@ -328,40 +293,25 @@ pub struct UpdateProfile<'info> {
         constraint = profile.authority == user.key() @ CustomError::Unauthorized
     )]
     pub profile: Account<'info, UserProfile>,
-
     #[account(mut)]
     pub user: Signer<'info>,
 }
 
-// Necesitamos el campo authority en UserProfile para has_one
-// Anchor hace has_one = authority buscando profile.authority == user.key()
-// Renombramos el constraint correctamente:
-
 #[derive(Accounts)]
 pub struct CreateTask<'info> {
     #[account(
-        init,
-        payer = creator,
-        space = TASK_SPACE,
+        init, payer = creator, space = TASK_SPACE,
         seeds = [b"task", creator.key().as_ref(), &profile.tasks_created.to_le_bytes()],
         bump
     )]
     pub task: Account<'info, Task>,
-
-    #[account(
-        mut,
-        seeds = [b"profile", creator.key().as_ref()],
-        bump
-    )]
+    #[account(mut, seeds = [b"profile", creator.key().as_ref()], bump)]
     pub profile: Account<'info, UserProfile>,
-
     /// CHECK: PDA vault validada con seeds
     #[account(mut, seeds = [b"vault", creator.key().as_ref()], bump)]
     pub vault: UncheckedAccount<'info>,
-
     #[account(mut)]
     pub creator: Signer<'info>,
-
     pub system_program: Program<'info, System>,
 }
 
@@ -369,7 +319,6 @@ pub struct CreateTask<'info> {
 pub struct AcceptTask<'info> {
     #[account(mut)]
     pub task: Account<'info, Task>,
-
     #[account(mut)]
     pub worker: Signer<'info>,
 }
@@ -378,7 +327,6 @@ pub struct AcceptTask<'info> {
 pub struct SubmitDelivery<'info> {
     #[account(mut)]
     pub task: Account<'info, Task>,
-
     #[account(mut)]
     pub worker: Signer<'info>,
 }
@@ -387,24 +335,15 @@ pub struct SubmitDelivery<'info> {
 pub struct ApproveAndPay<'info> {
     #[account(mut)]
     pub task: Account<'info, Task>,
-
     #[account(mut)]
     pub creator: Signer<'info>,
-
     #[account(mut)]
     pub worker: SystemAccount<'info>,
-
-    #[account(
-        mut,
-        seeds = [b"profile", worker.key().as_ref()],
-        bump
-    )]
+    #[account(mut, seeds = [b"profile", worker.key().as_ref()], bump)]
     pub worker_profile: Account<'info, UserProfile>,
-
     /// CHECK: PDA vault validada con seeds y bump guardado en task
     #[account(mut, seeds = [b"vault", task.creator.as_ref()], bump = task.vault_bump)]
     pub vault: UncheckedAccount<'info>,
-
     pub system_program: Program<'info, System>,
 }
 
@@ -412,7 +351,6 @@ pub struct ApproveAndPay<'info> {
 pub struct ReportError<'info> {
     #[account(mut)]
     pub task: Account<'info, Task>,
-
     #[account(mut)]
     pub creator: Signer<'info>,
 }
@@ -421,20 +359,15 @@ pub struct ReportError<'info> {
 pub struct CancelTask<'info> {
     #[account(mut)]
     pub task: Account<'info, Task>,
-
     #[account(mut)]
     pub creator: Signer<'info>,
-
     /// CHECK: PDA vault validada con seeds y bump guardado en task
     #[account(mut, seeds = [b"vault", task.creator.as_ref()], bump = task.vault_bump)]
     pub vault: UncheckedAccount<'info>,
-
     pub system_program: Program<'info, System>,
 }
 
-// ============================================================
-// ERRORS
-// ============================================================
+// ── ERRORS ────────────────────────────────────────────────────
 
 #[error_code]
 pub enum CustomError {
@@ -446,4 +379,6 @@ pub enum CustomError {
     StringTooLong,
     #[msg("Amount must be greater than zero")]
     InvalidAmount,
+    #[msg("Rating must be between 1 and 5")]
+    InvalidRating,
 }
