@@ -35,7 +35,7 @@
     {
       "name": "approve_and_pay",
       "docs": [
-        "Cliente aprueba la entrega y libera el pago al worker"
+        "Aprueba la entrega, libera pago y registra rating (1-5)"
       ],
       "discriminator": [
         17,
@@ -113,13 +113,15 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "rating",
+          "type": "u8"
+        }
+      ]
     },
     {
       "name": "cancel_task",
-      "docs": [
-        "Cliente cancela y recupera el SOL (solo si aún no tiene worker asignado)"
-      ],
       "discriminator": [
         69,
         228,
@@ -403,9 +405,6 @@
     },
     {
       "name": "report_error",
-      "docs": [
-        "Cliente reporta un error — el worker puede resubmitir"
-      ],
       "discriminator": [
         88,
         133,
@@ -436,9 +435,6 @@
     },
     {
       "name": "submit_delivery",
-      "docs": [
-        "Worker sube URL de entrega (link, IPFS, Google Drive, etc.)"
-      ],
       "discriminator": [
         217,
         177,
@@ -578,6 +574,11 @@
       "code": 6003,
       "name": "InvalidAmount",
       "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidRating",
+      "msg": "Rating must be between 1 and 5"
     }
   ],
   "types": [
@@ -706,6 +707,14 @@
           },
           {
             "name": "reputation",
+            "type": "u64"
+          },
+          {
+            "name": "total_rating",
+            "type": "u64"
+          },
+          {
+            "name": "rating_count",
             "type": "u64"
           }
         ]
