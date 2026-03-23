@@ -5,13 +5,17 @@ export default defineConfig({
   plugins: [react()],
   define: {
     global: 'globalThis',
+    'process.env': '{}',
+    'process.version': '"v18.0.0"',
+    'process.browser': 'true',
   },
   resolve: {
     alias: {
       buffer: 'buffer',
+      process: 'process/browser',
     },
   },
   optimizeDeps: {
-    include: ['buffer'],
+    include: ['buffer', 'process'],
   },
 })
