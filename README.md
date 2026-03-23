@@ -67,7 +67,7 @@ El ciclo completo vive on-chain. Ninguna de las dos partes puede tocar el SOL fu
 solana-test-validator
 
 # Terminal 2 — clonar, instalar y correr
-git clone https://github.com/tu-usuario/blinktasks
+git clone https://github.com/Artur896/blinktasks
 cd blinktasks
 npm install
 anchor build
@@ -97,7 +97,7 @@ npm run dev
 blinktasks/
 ├── programs/blinktasks/src/
 │   └── lib.rs                  # Contrato Anchor
-└── src/
+└── app/src/
     ├── App.jsx                 # Orquestador principal
     ├── hooks/
     │   ├── useProfile.js       # CRUD de perfil propio
