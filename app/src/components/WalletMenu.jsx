@@ -81,7 +81,7 @@ export function WalletMenu({ profile }) {
               {profile?.username && <p style={s.username}>{profile.username}</p>}
               <p style={s.addrSmall}>{short}</p>
             </div>
-            <span style={s.networkBadge}>Localnet</span>
+            <span style={s.networkBadge}>Devnet</span>
           </div>
 
           <div style={s.statsRow}>
