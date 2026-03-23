@@ -1,36 +1,32 @@
 import { Buffer } from "buffer";
-import process from "process";
-
-window.Buffer = Buffer;
-window.process = process;
+window.Buffer = window.Buffer ?? Buffer;
 
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-
-import {
-  ConnectionProvider,
-  WalletProvider,
-} from "@solana/wallet-adapter-react";
-
-import {
-  WalletModalProvider,
-} from "@solana/wallet-adapter-react-ui";
-
-import {
-  PhantomWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
-
+import { LanguageProvider } from "./hooks/useLanguage.jsx";
+import { ThemeProvider }    from "./hooks/useTheme.jsx";
+import App from "./App.jsx";
+import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import "@solana/wallet-adapter-react-ui/styles.css";
+import "./styles/wallet.css";
 
-const wallets = [new PhantomWalletAdapter()];
+const wallets  = [new PhantomWalletAdapter()];
+const endpoint = "http://localhost:8899"; // localnet
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <ConnectionProvider endpoint="http://127.0.0.1:8899">
-    <WalletProvider wallets={wallets} autoConnect>
-      <WalletModalProvider>
-        <App />
-      </WalletModalProvider>
-    </WalletProvider>
-  </ConnectionProvider>
+  <React.StrictMode>
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <ThemeProvider>
+            <LanguageProvider>
+              <App />
+            </LanguageProvider>
+          </ThemeProvider>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  </React.StrictMode>
 );

@@ -35,7 +35,7 @@
     {
       "name": "approve_and_pay",
       "docs": [
-        "Aprueba la entrega, libera pago y registra rating (1-5)"
+        "Cliente aprueba y paga"
       ],
       "discriminator": [
         17,
@@ -121,7 +121,65 @@
       ]
     },
     {
+      "name": "cancel_dispute",
+      "docs": [
+        "Cliente cancela cuando el worker agotó sus 3 resubmits"
+      ],
+      "discriminator": [
+        23,
+        155,
+        220,
+        94,
+        76,
+        141,
+        231,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.creator",
+                "account": "Task"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancel_task",
+      "docs": [
+        "Cancela tarea Open, regresa SOL al creador"
+      ],
       "discriminator": [
         69,
         228,
@@ -141,6 +199,85 @@
           "name": "creator",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "task.creator",
+                "account": "Task"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_after_timeout",
+      "docs": [
+        "Worker cobra si el cliente no responde en 7 días"
+      ],
+      "discriminator": [
+        90,
+        0,
+        225,
+        186,
+        150,
+        114,
+        231,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true
+        },
+        {
+          "name": "worker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "worker_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "worker"
+              }
+            ]
+          }
         },
         {
           "name": "vault",
@@ -351,7 +488,19 @@
           "type": "string"
         },
         {
-          "name": "contact",
+          "name": "whatsapp",
+          "type": "string"
+        },
+        {
+          "name": "discord",
+          "type": "string"
+        },
+        {
+          "name": "telegram",
+          "type": "string"
+        },
+        {
+          "name": "github",
           "type": "string"
         }
       ]
@@ -405,6 +554,9 @@
     },
     {
       "name": "report_error",
+      "docs": [
+        "Cliente reporta error — bloqueado si worker agotó resubmits"
+      ],
       "discriminator": [
         88,
         133,
@@ -435,6 +587,9 @@
     },
     {
       "name": "submit_delivery",
+      "docs": [
+        "Primera entrega del worker"
+      ],
       "discriminator": [
         217,
         177,
@@ -444,6 +599,39 @@
         185,
         123,
         96
+      ],
+      "accounts": [
+        {
+          "name": "task",
+          "writable": true
+        },
+        {
+          "name": "worker",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "delivery_url",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "submit_delivery_retry",
+      "docs": [
+        "Resubmit después de una disputa — lleva contador"
+      ],
+      "discriminator": [
+        43,
+        223,
+        37,
+        161,
+        217,
+        21,
+        153,
+        173
       ],
       "accounts": [
         {
@@ -520,7 +708,19 @@
           "type": "string"
         },
         {
-          "name": "contact",
+          "name": "whatsapp",
+          "type": "string"
+        },
+        {
+          "name": "discord",
+          "type": "string"
+        },
+        {
+          "name": "telegram",
+          "type": "string"
+        },
+        {
+          "name": "github",
           "type": "string"
         }
       ]
@@ -579,6 +779,21 @@
       "code": 6004,
       "name": "InvalidRating",
       "msg": "Rating must be between 1 and 5"
+    },
+    {
+      "code": 6005,
+      "name": "MaxResubmitsReached",
+      "msg": "Worker has reached the maximum number of resubmits"
+    },
+    {
+      "code": 6006,
+      "name": "ResubmitsNotExhausted",
+      "msg": "Resubmits are not exhausted yet"
+    },
+    {
+      "code": 6007,
+      "name": "TimeoutNotReached",
+      "msg": "Review timeout has not been reached yet (7 days required)"
     }
   ],
   "types": [
@@ -630,6 +845,14 @@
                 "name": "TaskStatus"
               }
             }
+          },
+          {
+            "name": "resubmit_count",
+            "type": "u8"
+          },
+          {
+            "name": "submitted_at",
+            "type": "i64"
           },
           {
             "name": "bump",
@@ -694,7 +917,19 @@
             "type": "string"
           },
           {
-            "name": "contact",
+            "name": "whatsapp",
+            "type": "string"
+          },
+          {
+            "name": "discord",
+            "type": "string"
+          },
+          {
+            "name": "telegram",
+            "type": "string"
+          },
+          {
+            "name": "github",
             "type": "string"
           },
           {

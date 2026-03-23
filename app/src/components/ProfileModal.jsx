@@ -1,140 +1,180 @@
 import { useState } from "react";
-import { useBreakpoint } from "../hooks/useBreakpoint.js";
+import { useLanguage } from "../hooks/useLanguage.jsx";
+import { Modal, ModalBtn, Field, inputStyle } from "./Modal.jsx";
 
 const SKILLS_OPTIONS = ["Diseño", "Código", "Redacción", "Marketing", "Video", "Audio", "3D", "Otro"];
 
+const CONTACT_FIELDS = [
+  {
+    key: "whatsapp",
+    icon: "📱",
+    label: "WhatsApp",
+    placeholder: "+52 55 1234 5678",
+    prefix: "https://wa.me/",
+    color: "#25D366",
+  },
+  {
+    key: "discord",
+    icon: "🎮",
+    label: "Discord",
+    placeholder: "usuario#0000",
+    prefix: null,
+    color: "#5865F2",
+  },
+  {
+    key: "telegram",
+    icon: "✈️",
+    label: "Telegram",
+    placeholder: "@usuario",
+    prefix: "https://t.me/",
+    color: "#26A5E4",
+  },
+  {
+    key: "github",
+    icon: "💻",
+    label: "GitHub",
+    placeholder: "tu-usuario",
+    prefix: "https://github.com/",
+    color: "#f0f0fa",
+  },
+];
+
 export function ProfileModal({ existing, onClose, onSave, loading }) {
-  const { isMobile } = useBreakpoint();
+  const { t } = useLanguage();
   const [form, setForm] = useState({
     username: existing?.username || "",
     bio:      existing?.bio      || "",
     skills:   existing?.skills   || "",
-    contact:  existing?.contact  || "",
+    whatsapp: existing?.whatsapp || "",
+    discord:  existing?.discord  || "",
+    telegram: existing?.telegram || "",
+    github:   existing?.github   || "",
   });
   const [error, setError] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async () => {
-    if (!form.username.trim()) return setError("El username es requerido");
-    if (form.username.length > 50)  return setError("Username máx 50 chars");
-    if (form.bio.length > 200)      return setError("Bio máx 200 chars");
-    if (form.skills.length > 100)   return setError("Skills máx 100 chars");
-    if (form.contact.length > 100)  return setError("Contacto máx 100 chars");
+    if (!form.username.trim()) return setError(t("usernameRequired"));
+    if (form.username.length > 50)  return setError(t("usernameMax"));
+    if (form.bio.length > 200)      return setError(t("bioMax"));
+    if (form.skills.length > 100)   return setError(t("skillsMax"));
+    for (const f of CONTACT_FIELDS) {
+      if (form[f.key].length > 50) return setError(`${f.label} máx 50 chars`);
+    }
     try {
       await onSave(form);
       onClose();
     } catch (e) {
-      setError(e.message || "Error al guardar");
+      setError(e.message || t("errorSaving"));
     }
   };
 
+  const toggleSkill = (skill) => {
+    const arr = form.skills ? form.skills.split(",").map(s => s.trim()).filter(Boolean) : [];
+    const idx = arr.findIndex(s => s.toLowerCase() === skill.toLowerCase());
+    if (idx >= 0) arr.splice(idx, 1); else arr.push(skill);
+    set("skills", arr.join(", "));
+  };
+
   return (
-    <div style={s.overlay} className="modal-overlay" onClick={onClose}>
-      <div style={s.modal(isMobile)} className="modal-sheet" onClick={e => e.stopPropagation()}>
+    <Modal
+      onClose={onClose}
+      title={existing ? t("updateProfile") : t("createProfileVault")}
+      accentColor="var(--accent)"
+      maxWidth={500}
+      footer={
+        <>
+          <ModalBtn variant="secondary" onClick={onClose} fullWidth>{t("cancel")}</ModalBtn>
+          <ModalBtn variant="primary" onClick={handleSubmit} disabled={loading} fullWidth>
+            {loading ? t("saving") : existing ? t("updateProfile") : t("createProfileVault")}
+          </ModalBtn>
+        </>
+      }
+    >
+      {/* Username */}
+      <Field label={t("usernameLabel")} hint="máx 50">
+        <input style={inputStyle} value={form.username} maxLength={50}
+          onChange={e => set("username", e.target.value)}
+          placeholder="satoshi_dev" autoComplete="off" autoCapitalize="none" />
+      </Field>
 
-        {/* Drag handle — mobile */}
-        {isMobile && <div style={s.handle} />}
+      {/* Bio */}
+      <Field label={t("bioLabel")} hint={`${form.bio.length}/200`}>
+        <textarea style={{ ...inputStyle, height: 72, resize: "vertical" }}
+          value={form.bio} maxLength={200}
+          onChange={e => set("bio", e.target.value)}
+          placeholder={t("bioPlaceholder")} />
+      </Field>
 
-        <div style={s.header}>
-          <span style={s.title}>{existing ? "Editar perfil" : "Crear perfil"}</span>
-          {!isMobile && <button onClick={onClose} style={s.closeBtn}>✕</button>}
+      {/* Skills */}
+      <Field label={t("skillsLabel")} hint="máx 100">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+          {SKILLS_OPTIONS.map(skill => {
+            const active = form.skills.toLowerCase().includes(skill.toLowerCase());
+            return (
+              <button key={skill} onClick={() => toggleSkill(skill)}
+                style={active ? s.chipActive : s.chip}>
+                {skill}
+              </button>
+            );
+          })}
         </div>
+        <input style={inputStyle} value={form.skills} maxLength={100}
+          onChange={e => set("skills", e.target.value)}
+          placeholder={t("skillsPlaceholder")} />
+      </Field>
 
-        <div style={s.body}>
-          <Field label="Username *" hint="máx 50 chars">
-            <input style={s.input} value={form.username} maxLength={50}
-              onChange={e => set("username", e.target.value)}
-              placeholder="satoshi_dev"
-              autoComplete="off" autoCapitalize="none" />
-          </Field>
-
-          <Field label="Bio" hint={`${form.bio.length}/200`}>
-            <textarea style={{ ...s.input, height: 80, resize: "vertical" }}
-              value={form.bio} maxLength={200}
-              onChange={e => set("bio", e.target.value)}
-              placeholder="Cuéntale a los clientes quién eres..." />
-          </Field>
-
-          <Field label="Skills" hint="máx 100 chars">
-            <div style={s.chipRow}>
-              {SKILLS_OPTIONS.map(skill => {
-                const active = form.skills.toLowerCase().includes(skill.toLowerCase());
-                return (
-                  <button key={skill} onClick={() => {
-                    const arr = form.skills ? form.skills.split(",").map(s => s.trim()).filter(Boolean) : [];
-                    const idx = arr.findIndex(s => s.toLowerCase() === skill.toLowerCase());
-                    if (idx >= 0) arr.splice(idx, 1); else arr.push(skill);
-                    set("skills", arr.join(", "));
-                  }} style={active ? s.chipActive : s.chip}>
-                    {skill}
-                  </button>
-                );
-              })}
+      {/* Contacto estructurado */}
+      <div style={s.contactSection}>
+        <span style={s.sectionLabel}>
+          {t("contact")} — {t("atLeastOne") || "al menos uno para recibir trabajo"}
+        </span>
+        <div style={s.contactGrid}>
+          {CONTACT_FIELDS.map(field => (
+            <div key={field.key} style={s.contactField}>
+              <div style={s.contactLabel(field.color)}>
+                <span style={{ fontSize: 14 }}>{field.icon}</span>
+                <span style={{ color: field.color, fontSize: 11, fontWeight: 600 }}>{field.label}</span>
+              </div>
+              <div style={s.contactInputRow}>
+                {field.prefix && (
+                  <span style={s.prefix}>{field.prefix}</span>
+                )}
+                <input
+                  style={{
+                    ...inputStyle,
+                    borderRadius: field.prefix ? "0 8px 8px 0" : 8,
+                    borderLeft: field.prefix ? "none" : `1px solid var(--border)`,
+                    flex: 1,
+                    fontSize: 13,
+                    padding: "9px 10px",
+                  }}
+                  value={form[field.key]}
+                  maxLength={50}
+                  onChange={e => set(field.key, e.target.value)}
+                  placeholder={field.placeholder}
+                  autoComplete="off"
+                  autoCapitalize="none"
+                />
+              </div>
             </div>
-            <input style={{ ...s.input, marginTop: 8 }} value={form.skills} maxLength={100}
-              onChange={e => set("skills", e.target.value)}
-              placeholder="o escribe tus skills manualmente" />
-          </Field>
-
-          <Field label="Contacto" hint="email, Telegram, Discord, etc.">
-            <input style={s.input} value={form.contact} maxLength={100}
-              onChange={e => set("contact", e.target.value)}
-              placeholder="@tu_usuario / tu@email.com"
-              autoComplete="off" />
-          </Field>
-
-          {error && <p style={s.error}>{error}</p>}
-        </div>
-
-        <div style={s.footer}>
-          {!isMobile && (
-            <button onClick={onClose} style={s.cancelBtn}>Cancelar</button>
-          )}
-          <button onClick={handleSubmit} disabled={loading}
-            style={{ ...s.confirmBtn, flex: isMobile ? "1" : "2" }}>
-            {loading ? "Guardando..." : existing ? "Actualizar perfil" : "Crear perfil + vault"}
-          </button>
+          ))}
         </div>
       </div>
-    </div>
-  );
-}
 
-function Field({ label, hint, children }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: "#6b6b8a", textTransform: "uppercase", letterSpacing: "0.1em" }}>{label}</span>
-        {hint && <span style={{ fontSize: 10, color: "#3a3a55" }}>{hint}</span>}
-      </div>
-      {children}
-    </div>
+      {error && <p style={{ color: "var(--red)", fontSize: 12 }}>{error}</p>}
+    </Modal>
   );
 }
 
 const s = {
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
-  modal:   (isMobile) => ({
-    background: "#13131a",
-    border: "1px solid #2a2a3d",
-    borderRadius: isMobile ? "20px 20px 0 0" : 16,
-    width: "100%",
-    maxWidth: isMobile ? "100%" : 480,
-    maxHeight: isMobile ? "92vh" : "90vh",
-    overflowY: "auto",
-    fontFamily: "'DM Mono', monospace",
-  }),
-  handle:  { width: 40, height: 4, borderRadius: 2, background: "#2a2a3d", margin: "12px auto 0" },
-  header:  { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #2a2a3d", position: "sticky", top: 0, background: "#13131a", zIndex: 1 },
-  title:   { fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 18, color: "#f0f0fa" },
-  closeBtn:{ background: "none", color: "#6b6b8a", fontSize: 16, padding: "4px 8px", borderRadius: 6 },
-  body:    { padding: "20px 24px", display: "flex", flexDirection: "column", gap: 18 },
-  input:   { width: "100%", background: "#0a0a0f", border: "1px solid #2a2a3d", borderRadius: 8, padding: "10px 12px", color: "#f0f0fa", fontSize: 14, fontFamily: "'DM Mono', monospace", outline: "none" },
-  chipRow: { display: "flex", flexWrap: "wrap", gap: 6 },
-  chip:       { padding: "6px 14px", borderRadius: 999, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 12, cursor: "pointer", minHeight: 36 },
-  chipActive: { padding: "6px 14px", borderRadius: 999, background: "#7c6dff22", color: "#a78bfa", border: "1px solid #7c6dff55", fontSize: 12, cursor: "pointer", minHeight: 36 },
-  error:   { color: "#ff5f6d", fontSize: 12 },
-  footer:  { display: "flex", gap: 10, padding: "16px 24px", borderTop: "1px solid #2a2a3d", position: "sticky", bottom: 0, background: "#13131a" },
-  cancelBtn:  { flex: 1, padding: "10px", borderRadius: 10, background: "#1c1c27", color: "#6b6b8a", border: "1px solid #2a2a3d", fontSize: 13 },
-  confirmBtn: { padding: "12px 10px", borderRadius: 10, background: "linear-gradient(135deg, #7c6dff, #a78bfa)", color: "#fff", fontWeight: 600, fontSize: 14, fontFamily: "'Syne', sans-serif" },
+  chip:       { padding: "5px 12px", borderRadius: 999, background: "var(--surface2)", color: "var(--muted)", border: "1px solid var(--border)", fontSize: 12, cursor: "pointer", minHeight: 32 },
+  chipActive: { padding: "5px 12px", borderRadius: 999, background: "rgba(124,109,255,0.15)", color: "var(--accent2)", border: "1px solid rgba(124,109,255,0.4)", fontSize: 12, cursor: "pointer", minHeight: 32 },
+  contactSection: { display: "flex", flexDirection: "column", gap: 10 },
+  sectionLabel:   { fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" },
+  contactGrid:    { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  contactField:   { display: "flex", flexDirection: "column", gap: 5 },
+  contactLabel:   (color) => ({ display: "flex", alignItems: "center", gap: 5 }),
+  contactInputRow:{ display: "flex", alignItems: "stretch" },
+  prefix:         { display: "flex", alignItems: "center", padding: "0 8px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "8px 0 0 8px", fontSize: 10, color: "var(--subtle)", whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" },
 };

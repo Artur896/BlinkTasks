@@ -12,7 +12,7 @@ blinktasks = "An6HpDp4ypTZB1mKEFzmvXyHSP1oBPf2KeG9J2MkP2my"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

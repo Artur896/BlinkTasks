@@ -11,25 +11,26 @@ export function lamportsToSol(lamports) {
   return (Number(lamports) / 1e9).toFixed(4);
 }
 
-export function formatDeadline(ts) {
+export function formatDeadline(ts, lang = "es") {
   if (!ts || Number(ts) === 0) return null;
-  return new Date(Number(ts) * 1000).toLocaleDateString("es-MX", {
+  const locale = lang === "es" ? "es-MX" : "en-US";
+  return new Date(Number(ts) * 1000).toLocaleDateString(locale, {
     day: "2-digit", month: "short", year: "numeric",
   });
 }
 
 export function getTaskStatus(data) {
-  const key = Object.keys(data.status)[0];
-  return key; // "open" | "inProgress" | "submitted" | "disputed" | "paid" | "cancelled"
+  return Object.keys(data.status)[0];
 }
 
-export const STATUS_LABEL = {
-  open:        "Disponible",
-  inProgress:  "En progreso",
-  submitted:   "Entrega pendiente",
-  disputed:    "Disputado",
-  paid:        "Pagado",
-  cancelled:   "Cancelado",
+// Status label keys — se resuelven con t() en los componentes
+export const STATUS_KEY = {
+  open:        "statusOpen",
+  inProgress:  "statusInProgress",
+  submitted:   "statusSubmitted",
+  disputed:    "statusDisputed",
+  paid:        "statusPaid",
+  cancelled:   "statusCancelled",
 };
 
 export const STATUS_COLOR = {
