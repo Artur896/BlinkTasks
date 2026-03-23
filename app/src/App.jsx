@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useProfile }          from "./hooks/useProfile.js";
 import { useTasks }            from "./hooks/useTasks.js";
 import { useProfiles }         from "./hooks/useProfiles.js";
@@ -23,15 +24,17 @@ import "./styles/globals.css";
 
 // Botón de conectar cuando no hay wallet
 function ConnectButton({ lang }) {
+  const { setVisible } = useWalletModal();
   return (
     <button
-      onClick={() => document.querySelector(".wallet-adapter-button")?.click()}
+      onClick={() => setVisible(true)}
       style={{
         padding: "8px 16px", borderRadius: 10,
-        background: "#1c1c27", color: "#f0f0fa",
-        border: "1px solid #2a2a3d", fontSize: 13,
+        background: "linear-gradient(135deg, var(--accent), var(--accent2))",
+        color: "#fff", border: "none", fontSize: 13,
         fontFamily: "'Syne', sans-serif", fontWeight: 700,
         cursor: "pointer",
+        boxShadow: "0 4px 14px rgba(124,109,255,0.4)",
       }}>
       {lang === "es" ? "Conectar wallet" : "Connect wallet"}
     </button>
