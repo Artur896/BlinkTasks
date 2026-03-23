@@ -13,7 +13,7 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 import "./styles/wallet.css";
 
 const wallets  = [new PhantomWalletAdapter()];
-const endpoint = "http://localhost:8899"; // localnet
+const endpoint = "https://api.devnet.solana.com";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
